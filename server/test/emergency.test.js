@@ -1,0 +1,17 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { emergencySubmissionSchema } from '../src/validators.js';
+const valid={type:'ACCIDENT',confirmed:true};
+test('accepts a confirmed alert without location',()=>{assert.equal(emergencySubmissionSchema.parse(valid).latitude,undefined)});
+test('accepts a confirmed alert with exact available coordinates',()=>{const value=emergencySubmissionSchema.parse({...valid,latitude:37.7749,longitude:-122.4194,locationAccuracy:7.5});assert.equal(value.latitude,37.7749);assert.equal(value.longitude,-122.4194)});
+test('rejects an alert without explicit confirmation',()=>{assert.throws(()=>emergencySubmissionSchema.parse({...valid,confirmed:false}))});
+test('rejects an unknown emergency type',()=>{assert.throws(()=>emergencySubmissionSchema.parse({...valid,type:'UNKNOWN'}))});
+test('requires latitude and longitude as a pair',()=>{assert.throws(()=>emergencySubmissionSchema.parse({...valid,latitude:1}))});
+test('rejects invalid coordinate ranges',()=>{assert.throws(()=>emergencySubmissionSchema.parse({...valid,latitude:91,longitude:0}))});
+test('rejects overly long descriptions',()=>{assert.throws(()=>emergencySubmissionSchema.parse({...valid,description:'x'.repeat(501)}))});
+import { emailSchema, phoneSchema, passwordSchema, vehicleInputSchema, contactInputSchema } from '../src/validators.js';
+test('normalizes account email addresses',()=>assert.equal(emailSchema.parse(' OWNER@EXAMPLE.TEST '),'owner@example.test'));
+test('accepts E.164 and rejects local-only numbers',()=>{assert.equal(phoneSchema.parse('+14155552671'),'+14155552671');assert.throws(()=>phoneSchema.parse('4155552671'))});
+test('enforces minimum password complexity',()=>{assert.equal(passwordSchema.safeParse('Beacon-Password-2026!').success,true);assert.equal(passwordSchema.safeParse('short').success,false)});
+test('normalizes vehicle registration values',()=>{assert.equal(vehicleInputSchema.parse({registrationNumber:' ab 123 ',make:'Honda',model:'Civic',color:'Blue'}).registrationNumber,'AB123')});
+test('validates contact name and international phone',()=>{assert.equal(contactInputSchema.safeParse({name:'Casey Morgan',phone:'+14155552671'}).success,true);assert.equal(contactInputSchema.safeParse({name:'x',phone:'555'}).success,false)});

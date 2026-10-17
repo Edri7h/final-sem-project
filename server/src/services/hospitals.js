@@ -1,0 +1,6 @@
+export async function nearbyHospitals(lat,lon){
+ const radius=5000; const query=`[out:json][timeout:10];(node[amenity=hospital](around:${radius},${lat},${lon});way[amenity=hospital](around:${radius},${lat},${lon});relation[amenity=hospital](around:${radius},${lat},${lon}););out center tags 20;`;
+ const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(12000)});
+ if(!response.ok) throw new Error('Hospital provider unavailable'); const json=await response.json(); return (json.elements||[]).map(e=>{const lat1=e.lat??e.center?.lat,lon1=e.lon??e.center?.lon;return {name:e.tags?.name||'Hospital',latitude:lat1,longitude:lon1,address:[e.tags?.['addr:street'],e.tags?.['addr:city']].filter(Boolean).join(', '),distanceMeters:Math.round(distance(lat,lon,lat1,lon1)),mapsUrl:`https://www.google.com/maps/search/?api=1&query=${lat1},${lon1}`}}).filter(x=>Number.isFinite(x.latitude)&&Number.isFinite(x.longitude)).sort((a,b)=>a.distanceMeters-b.distanceMeters).slice(0,10);
+}
+function distance(a,b,c,d){const r=x=>x*Math.PI/180;const v=Math.sin(r(c-a)/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(r(d-b)/2)**2;return 6371000*2*Math.atan2(Math.sqrt(v),Math.sqrt(1-v));}

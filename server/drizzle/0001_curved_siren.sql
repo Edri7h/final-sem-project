@@ -1,0 +1,2 @@
+CREATE INDEX "notifications_status_idx" ON "notifications" USING btree ("status");--> statement-breakpoint
+CREATE INDEX "notifications_alert_idx" ON "notifications" USING btree ("alert_id","created_at");
