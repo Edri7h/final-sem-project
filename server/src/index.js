@@ -52,7 +52,10 @@ const allowedFrontendOrigins = new Set([
   ...frontendUrls,
   productionFrontendUrl,
 ]);
-const frontendUrl = frontendUrls[0] || productionFrontendUrl;
+const frontendUrl =
+  process.env.NODE_ENV === "production"
+    ? productionFrontendUrl
+    : frontendUrls[0] || productionFrontendUrl;
 if (!jwtSecret || jwtSecret.length < 32)
   throw new Error("JWT_SECRET must contain at least 32 characters");
 app.disable("x-powered-by");
