@@ -129,7 +129,7 @@ function issueCookie(res, user) {
   res.cookie("session", token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
     maxAge: 12 * 60 * 60 * 1000,
     path: "/",
   });
@@ -305,7 +305,7 @@ app.post(
     res.clearCookie("session", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       path: "/",
     });
     res.json({ ok: true });
