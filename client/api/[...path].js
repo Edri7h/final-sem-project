@@ -33,6 +33,9 @@ export default async function handler(req, res) {
   // the browser receive the Set-Cookie response on its own Vercel origin.
   headers.delete("host");
   headers.delete("accept-encoding");
+  // Render only accepts state-changing requests from the canonical app URL.
+  // The proxy has a fixed backend destination, so pin this forwarded origin.
+  headers.set("origin", "https://final-sem-project-chi.vercel.app");
 
   const options = { method: req.method, headers, redirect: "manual" };
   if (req.method !== "GET" && req.method !== "HEAD") {
@@ -46,7 +49,10 @@ export default async function handler(req, res) {
     res.statusCode = upstream.status;
 
     for (const [name, value] of upstream.headers) {
-      if (!hopByHopHeaders.has(name.toLowerCase()) && name.toLowerCase() !== "set-cookie") {
+      if (
+        !hopByHopHeaders.has(name.toLowerCase()) &&
+        !["set-cookie", "content-encoding"].includes(name.toLowerCase())
+      ) {
         res.setHeader(name, value);
       }
     }
