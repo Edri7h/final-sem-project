@@ -3,7 +3,7 @@ import axios from "axios";
 const apiBaseUrl = (
   import.meta.env.DEV
     ? import.meta.env.VITE_API_URL || "http://localhost:4000"
-    : ""
+    : "https://final-sem-project-mzm4.onrender.com"
 ).replace(/\/+$/, "");
 
 export const apiClient = axios.create({
