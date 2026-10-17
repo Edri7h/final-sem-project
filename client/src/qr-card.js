@@ -1,3 +1,5 @@
+import { apiClient } from "./api.js";
+
 const escapeXml = (value = '') => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;',
   '<': '&lt;',
@@ -6,12 +8,16 @@ const escapeXml = (value = '') => String(value).replace(/[&<>"']/g, char => ({
   "'": '&apos;',
 }[char]));
 
-async function fetchQrData(vehicleId, apiBase) {
-  const response = await fetch(`${apiBase}/api/vehicles/${vehicleId}/qr.png`, {
-    credentials: 'include',
-  });
-  if (!response.ok) throw new Error('Could not load the vehicle QR code.');
-  const blob = await response.blob();
+async function fetchQrData(vehicleId) {
+  let blob;
+  try {
+    const response = await apiClient.get(`/api/vehicles/${vehicleId}/qr.png`, {
+      responseType: 'blob',
+    });
+    blob = response.data;
+  } catch {
+    throw new Error('Could not load the vehicle QR code.');
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
@@ -46,8 +52,8 @@ function cardSvg(vehicle, qrData) {
 </svg>`;
 }
 
-export async function downloadQrCard(vehicle, apiBase) {
-  const svg = cardSvg(vehicle, await fetchQrData(vehicle.id, apiBase));
+export async function downloadQrCard(vehicle) {
+  const svg = cardSvg(vehicle, await fetchQrData(vehicle.id));
   const url = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
   const link = document.createElement('a');
   link.href = url;
@@ -56,11 +62,11 @@ export async function downloadQrCard(vehicle, apiBase) {
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
-export async function printQrCard(vehicle, apiBase) {
+export async function printQrCard(vehicle) {
   const printWindow = window.open('about:blank', '_blank');
   if (!printWindow) throw new Error('Allow pop-ups to print the emergency card.');
   try {
-    const svg = cardSvg(vehicle, await fetchQrData(vehicle.id, apiBase));
+    const svg = cardSvg(vehicle, await fetchQrData(vehicle.id));
     const imageUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
     printWindow.document.open();
     printWindow.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${escapeXml(vehicle.registrationNumber)} emergency card</title><style>@page{size:A4 landscape;margin:0}*{box-sizing:border-box}body{margin:0;display:grid;place-items:center;min-height:100vh;background:#fff}img{display:block;width:100mm;height:50mm}@media screen{body{padding:24px;background:#edf0f1}img{box-shadow:0 8px 28px #0002}}</style></head><body><img alt="Emergency QR card for vehicle ${escapeXml(vehicle.registrationNumber)}" src="${imageUrl}"><script>window.addEventListener('load',()=>setTimeout(()=>{window.focus();window.print()},350))<\/script></body></html>`);
@@ -70,3 +76,4 @@ export async function printQrCard(vehicle, apiBase) {
     throw error;
   }
 }
+
