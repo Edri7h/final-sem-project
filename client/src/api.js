@@ -12,6 +12,14 @@ export const apiClient = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
+export const hasSessionToken = () => Boolean(sessionStorage.getItem("beacon.sessionToken"));
+
+apiClient.interceptors.request.use((config) => {
+  const token = sessionStorage.getItem("beacon.sessionToken");
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+});
+
 export async function api(path, options = {}) {
   const { body, ...config } = options;
 

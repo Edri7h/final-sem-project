@@ -133,12 +133,19 @@ function issueCookie(res, user) {
     maxAge: 12 * 60 * 60 * 1000,
     path: "/",
   });
+  return token;
 }
 async function auth(req, res, next) {
   try {
-    const token = req.cookies.session;
+    const authorization = req.get("authorization") || "";
+    const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1];
+    const token = bearer || req.cookies.session;
     if (!token)
       return res.status(401).json({ error: "Authentication required" });
+    const revokedUntil = revokedLocal.get(token);
+    if (revokedUntil && revokedUntil > Date.now())
+      return res.status(401).json({ error: "Session expired" });
+    if (revokedUntil) revokedLocal.delete(token);
     if (redis?.status === "ready" && (await redis.get(`revoked:${token}`)))
       return res.status(401).json({ error: "Session expired" });
     const payload = jwt.verify(token, jwtSecret, { issuer: "qr-emergency" });
@@ -200,9 +207,10 @@ app.get("/api/docs", (req, res) =>
     components: {
       securitySchemes: {
         cookieAuth: { type: "apiKey", in: "cookie", name: "session" },
+        bearerAuth: { type: "http", scheme: "bearer", bearerFormat: "JWT" },
       },
     },
-    security: [{ cookieAuth: [] }],
+    security: [{ cookieAuth: [] }, { bearerAuth: [] }],
     paths: apiPaths,
   }),
 );
@@ -261,12 +269,13 @@ app.post(
         phone: users.phone,
       });
     const delivery = await startPhoneVerification(s.phone);
-    issueCookie(res, { ...u, role: "USER" });
+    const sessionToken = issueCookie(res, { ...u, role: "USER" });
     res
       .status(201)
       .json({
         user: { ...u, phoneVerified: false },
         verificationRequired: true,
+        sessionToken,
         ...developmentOtpPayload(delivery),
       });
   }),
@@ -283,8 +292,9 @@ app.post(
       .limit(1);
     if (!u || !u.isActive || !(await verify(u.passwordHash, s.password)))
       return res.status(401).json({ error: "Email or password is incorrect" });
-    issueCookie(res, u);
+    const sessionToken = issueCookie(res, u);
     res.json({
+      sessionToken,
       user: {
         id: u.id,
         fullName: u.fullName,
@@ -302,6 +312,7 @@ app.post(
   wrap(async (req, res) => {
     if (redis?.status === "ready")
       await redis.set(`revoked:${req.token}`, "1", "EX", 43200);
+    else revokedLocal.set(req.token, Date.now() + 12 * 60 * 60 * 1000);
     res.clearCookie("session", {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",

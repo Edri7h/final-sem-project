@@ -1,6 +1,6 @@
 # HTTP API Reference
 
-All bodies and responses use JSON except QR PNG downloads. Browser authentication uses the session HTTP-only cookie. Authenticated routes require that cookie; vehicle and contact routes require a phone-verified account. Admin routes require ADMIN. Common errors: 400 validation, 401 unauthenticated, 403 role or verification denied, 404 unavailable/not owned, 409 duplicate/capacity conflict, 429 rate limited, 500 unexpected error. Validation responses include details with field and message.
+All bodies and responses use JSON except QR PNG downloads. Authentication accepts the session HTTP-only cookie or a `Bearer` JWT. Register and login return `sessionToken` for clients that cannot use cross-site cookies. Authenticated routes require a valid session; vehicle and contact routes require a phone-verified account. Admin routes require ADMIN. Common errors: 400 validation, 401 unauthenticated, 403 role or verification denied, 404 unavailable/not owned, 409 duplicate/capacity conflict, 429 rate limited, 500 unexpected error. Validation responses include details with field and message.
 
 | Method | Path | Access | Request | Success and errors |
 | --- | --- | --- | --- | --- |

@@ -1,5 +1,5 @@
 import { downloadQrCard, printQrCard } from "./qr-card.js";
-import { api } from "./api.js";
+import { api, hasSessionToken } from "./api.js";
 import React, { useEffect, useState } from "react";
 import { Link, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
@@ -23,6 +23,10 @@ function App() {
     user = useSelector((s) => s.session.user),
     ready = useSelector((s) => s.session.ready);
   useEffect(() => {
+    if (!hasSessionToken()) {
+      dispatch(clearUser());
+      return;
+    }
     api("/api/auth/me")
       .then((d) => dispatch(setUser(d.user)))
       .catch(() => dispatch(clearUser()));
@@ -202,6 +206,8 @@ function Auth({ mode }) {
             : { email: form.email, password: form.password },
         ),
       });
+      if (d.sessionToken)
+        sessionStorage.setItem("beacon.sessionToken", d.sessionToken);
       dispatch(
         setUser(
           register && d.developmentCode
@@ -457,6 +463,7 @@ function Dashboard() {
   }
   async function logout() {
     await api("/api/auth/logout", { method: "POST" });
+    sessionStorage.removeItem("beacon.sessionToken");
     dispatch(clearUser());
   }
   return (
