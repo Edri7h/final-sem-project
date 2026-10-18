@@ -1078,6 +1078,38 @@ app.use((err, req, res, next) => {
     return res
       .status(409)
       .json({ error: "A record with this value already exists" });
+  const providerCode = Number(err?.code);
+  if (
+    Number.isInteger(providerCode) &&
+    (err?.moreInfo || err?.status) &&
+    ((providerCode >= 10000 && providerCode < 40000) ||
+      (providerCode >= 60000 && providerCode < 70000))
+  ) {
+    const rateLimited = [20429, 60203, 60207, 60245].includes(providerCode);
+    const trialRecipient = [14111, 21608].includes(providerCode);
+    const blocked = [60238, 60410, 60412].includes(providerCode);
+    const credentialsRejected = providerCode === 20003;
+    const error = trialRecipient
+      ? "Twilio trial accounts can only send verification codes to recipient numbers verified in Twilio. Verify this contact number in Twilio Console, or use an already-verified number."
+      : rateLimited
+        ? "Twilio has reached a verification sending limit. Wait before requesting another code."
+        : blocked
+          ? "Twilio blocked this verification request. Check the number and the Twilio Verify logs for the reason."
+          : credentialsRejected
+            ? "Twilio rejected the credentials. Check the Account SID and Auth Token configured on Render."
+            : `Twilio could not send the verification code (error ${providerCode}). Check the Twilio Verify logs.`;
+    console.error(
+      JSON.stringify({
+        requestId: req.id,
+        event: "provider_error",
+        provider: "twilio",
+        providerCode,
+      }),
+    );
+    return res
+      .status(trialRecipient ? 400 : rateLimited ? 429 : blocked ? 403 : 502)
+      .json({ error, providerCode, requestId: req.id });
+  }
   console.error(
     JSON.stringify({
       requestId: req.id,
