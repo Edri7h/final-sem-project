@@ -24,7 +24,8 @@ import {
   sendAlertSms,
   startPhoneVerification,
   checkPhoneVerification,
-} from "./services/twilio.js";
+  Sms8Error,
+} from "./services/sms8.js";
 import { nearbyHospitals } from "./services/hospitals.js";
 import {
   emergencySubmissionSchema,
@@ -186,11 +187,7 @@ const pageParams = (req) => ({
   limit: Math.min(100, Math.max(1, Number(req.query.limit) || 20)),
 });
 function developmentOtpPayload(result) {
-  const configured = !!(
-    process.env.TWILIO_ACCOUNT_SID &&
-    process.env.TWILIO_AUTH_TOKEN &&
-    process.env.TWILIO_VERIFY_SERVICE_SID
-  );
+  const configured = !!process.env.SMS8_API_KEY?.trim();
   return process.env.NODE_ENV === "development" &&
     !configured &&
     result?.devCode
@@ -768,11 +765,12 @@ app.post(
         sid = null,
         error = null;
       try {
-        sid = await sendAlertSms(
+        const delivery = await sendAlertSms(
           contact.phone,
           `EMERGENCY: ${s.type} involving ${vehicle.make} ${vehicle.model} (${vehicle.registrationNumber}). ${s.description || ""} ${s.latitude != null ? `Location: https://maps.google.com/?q=${s.latitude},${s.longitude}` : "Location unavailable"}`,
         );
-        status = "SENT";
+        sid = delivery.providerId;
+        status = delivery.status;
       } catch (e) {
         error = e.message;
         console.error(
@@ -813,10 +811,17 @@ app.post(
             ? "NO_VERIFIED_CONTACTS"
             : results.every((x) => x === "SENT")
               ? "SENT"
-              : "FAILED",
-        message: results.some((x) => x === "FAILED")
-          ? "Emergency alert was recorded, but notification delivery could not be confirmed."
-          : "Emergency alert recorded.",
+              : results.some((x) => x === "FAILED")
+                ? "FAILED"
+                : "PENDING",
+        message:
+          results.length === 0
+            ? "No verified emergency contacts are configured for this vehicle."
+            : results.some((x) => x === "FAILED")
+              ? "Emergency alert was recorded, but one or more SMS notifications failed."
+              : results.some((x) => x === "PENDING")
+                ? "SMS8 accepted the notification request. Delivery is not confirmed yet."
+                : "Emergency alert recorded and SMS sent.",
       });
   }),
 );
@@ -1078,37 +1083,29 @@ app.use((err, req, res, next) => {
     return res
       .status(409)
       .json({ error: "A record with this value already exists" });
-  const providerCode = Number(err?.code);
-  if (
-    Number.isInteger(providerCode) &&
-    (err?.moreInfo || err?.status) &&
-    ((providerCode >= 10000 && providerCode < 40000) ||
-      (providerCode >= 60000 && providerCode < 70000))
-  ) {
-    const rateLimited = [20429, 60203, 60207, 60245].includes(providerCode);
-    const trialRecipient = [14111, 21608].includes(providerCode);
-    const blocked = [60238, 60410, 60412].includes(providerCode);
-    const credentialsRejected = providerCode === 20003;
-    const error = trialRecipient
-      ? "Twilio trial accounts can only send verification codes to recipient numbers verified in Twilio. Verify this contact number in Twilio Console, or use an already-verified number."
-      : rateLimited
-        ? "Twilio has reached a verification sending limit. Wait before requesting another code."
-        : blocked
-          ? "Twilio blocked this verification request. Check the number and the Twilio Verify logs for the reason."
-          : credentialsRejected
-            ? "Twilio rejected the credentials. Check the Account SID and Auth Token configured on Render."
-            : `Twilio could not send the verification code (error ${providerCode}). Check the Twilio Verify logs.`;
+  if (err instanceof Sms8Error) {
     console.error(
       JSON.stringify({
         requestId: req.id,
         event: "provider_error",
-        provider: "twilio",
-        providerCode,
+        provider: "sms8",
+        providerCode: err.code,
       }),
     );
     return res
-      .status(trialRecipient ? 400 : rateLimited ? 429 : blocked ? 403 : 502)
-      .json({ error, providerCode, requestId: req.id });
+      .status(err.status || 502)
+      .json({
+        error:
+          err.code === 401
+            ? "SMS8 rejected the API key. Check SMS8_API_KEY in the server environment."
+            : err.code === 402
+              ? "SMS8 has no message credits remaining."
+              : err.code === 429
+                ? "SMS8 is rate limiting requests. Wait before trying again."
+                : err.message,
+        providerCode: err.code,
+        requestId: req.id,
+      });
   }
   console.error(
     JSON.stringify({
