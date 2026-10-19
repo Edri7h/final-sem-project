@@ -4,39 +4,37 @@ A vehicle emergency QR application built with React, Express, PostgreSQL, and Dr
 
 ## Features
 
-- Cookie-based JWT login, logout, current-user endpoint, Argon2id password hashes, account roles, and phone verification through Twilio Verify.
+- JWT login, logout, current-user endpoint, Argon2id password hashes, account roles, and phone verification through SMS8 OTP. Sessions use an HTTP-only cookie; the client keeps its short-lived bearer compatibility token in memory only.
 - Owner-scoped multi-vehicle management, random QR tokens, PNG QR downloads, two-contact limit, and contact verification.
 - Mobile public emergency form. Scanning never sends an alert; an explicit checkbox and button are required. Location is optional and includes browser-reported accuracy.
 - PostgreSQL alert history, event history, lifecycle updates, SMS delivery records, audit logs, admin APIs, and health check.
-- Twilio SMS adapter. Missing development credentials create a recorded failed delivery; they do not claim the SMS was sent.
+- SMS8 SMS adapter for emergency alerts and phone verification. SMS8 sends through an Android phone paired to the SMS8 account.
 - Nearby hospital search through OpenStreetMap Overpass, with a provider boundary and graceful outage response.
 - Redis connection health and session revocation when configured; PostgreSQL remains the source of truth.
 
 ## Architecture
 
-`client/` is the React/Vite application, using React Router, Redux Toolkit, Tailwind CSS, and product-specific CSS. Drizzle tables are in `server/src/schema.js`, validation in `validators.js`, and provider integrations in `services/`. PostgreSQL stores users, vehicles, emergency contacts, alerts, alert events, SMS notifications, and audit logs. `server/src/openapi.js` describes the API; visit `/api/docs` for the OpenAPI JSON.
+`client/` is the React/Vite application, using React Router, Redux Toolkit, and product-specific CSS. UI pages/components call feature modules in `client/src/services/`; `client/src/api.js` owns Axios configuration, credentials, timeout, in-memory bearer compatibility, and safe error mapping. The Express app is created in `server/src/app.js`, started by `server/src/server.js`, with route modules, controllers, feature services, and repositories separated under `server/src/`. Authentication middleware and centralized error handling live in `middleware/`. Drizzle tables are in `schema.js`, validation in `validators.js`, and SMS8 and QR integrations in `services/`. PostgreSQL stores users, vehicles, emergency contacts, alerts, alert events, SMS notifications, and audit logs. `server/src/openapi.js` describes the API; visit `/api/docs` for the OpenAPI JSON.
 
 ## Requirements and configuration
 
-Node.js 20+, PostgreSQL 14+, and npm. Redis is optional locally. Twilio credentials are required for real SMS and phone verification.
+Node.js 20+, PostgreSQL 14+, and npm. Redis is optional locally. Configure SMS8 and pair an online Android phone with an active SIM for real SMS delivery and phone verification.
 
 Copy `server/.env.example` to `server/.env`; set `DATABASE_URL` and a random `JWT_SECRET` of at least 32 characters. Never commit `.env` or real credentials.
 
 | Variable | Purpose |
 | --- | --- |
-| `NODE_ENV` | `development` enables local OTP fallback; production disables it |
+| `NODE_ENV` | `development` enables local OTP fallback when SMS8 is not configured; production disables it |
 | `PORT` | Express port (default 4000) |
 | `DATABASE_URL` | PostgreSQL connection URL |
 | `REDIS_URL` | Optional Redis connection URL |
 | `JWT_SECRET` | Signing secret for HTTP-only session cookie |
-| `FRONTEND_URL` | Allowed browser origin and public QR base URL |
+| `FRONTEND_URL` | Allowed browser origins for CORS and mutation-origin checks |
 | `BACKEND_URL` | API URL in OpenAPI documentation |
-| `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` | Twilio credentials |
-| `TWILIO_PHONE_NUMBER` | SMS sender number |
-| `TWILIO_VERIFY_SERVICE_SID` | Twilio Verify service SID |
+| `SMS8_API_KEY` | Server-only SMS8 API key used for SMS alerts and OTP verification |
 | `HOSPITAL_PROVIDER` | Provider selection; current implementation is `overpass` |
 | `HOSPITAL_API_KEY` | Reserved for a keyed provider; Overpass does not need one |
-| `VITE_API_URL` | Optional client API origin; default `http://localhost:4000` |
+| `VITE_API_URL` | Optional client API origin; defaults to localhost in development and the configured Render API in production |
 | `SEED_PASSWORD` | Optional development seed password override |
 
 ## Local development
@@ -52,11 +50,11 @@ Client: `http://localhost:5173`; API: `http://localhost:4000`. `GET /health` rep
 
 ### Development OTP and seed accounts
 
-Without Twilio credentials in development, the development fallback returns the OTP only in local registration/resend/contact API responses and the UI displays it for local testing. Codes expire after five minutes; they are never written to logs and the fallback is disabled in production. It is not a simulated SMS. Seed accounts are `alex@example.test`, `jordan@example.test`, and `admin@example.test`; their default password is `Beacon-Development-Only-2026!` unless `SEED_PASSWORD` is set. Seed contacts are unverified. All seed data is fake; do not reuse credentials outside development.
+Without an SMS8 API key in development, the development fallback returns the OTP only in local registration/resend/contact API responses and the UI displays it for local testing. Codes expire after five minutes; they are never written to logs and the fallback is disabled in production. It is not a simulated SMS. Seed accounts are `alex@example.test`, `jordan@example.test`, and `admin@example.test`; their default password is `Beacon-Development-Only-2026!` unless `SEED_PASSWORD` is set. Seed contacts are unverified. All seed data is fake; do not reuse credentials outside development.
 
-### Twilio trial limitations
+### SMS8 delivery requirements
 
-Twilio trial accounts may restrict recipients to verified destination numbers and may add trial notices. These are provider restrictions, not application business rules. Configure a production Twilio account and Verify service as needed. If Twilio is unavailable, alerts are still stored and attempted contact notifications are recorded as `FAILED` with an error.
+SMS8 routes messages through an Android phone paired to your SMS8 account. Keep that phone powered, online, and connected to a working SIM. Set `SMS8_API_KEY` in the Render server environment and in `server/.env` for local development; never put it in the frontend or commit it. If SMS8 is unavailable, emergency alerts are still stored and notification attempts are recorded as `FAILED` with an error. SMS8 may accept a message as `Pending`; the API acceptance does not itself prove delivery to the recipient.
 
 ### Hospital provider
 
@@ -85,19 +83,19 @@ No pre-generated dataset is used; PostgreSQL is the application data source.
 - `/api/admin/*`: protected overview, users, vehicles, alerts, notification records, audit logs.
 - `/health`: dependency status; `/api/docs`: OpenAPI JSON.
 
-JSON API errors use `{ "error": "..." }`; validation responses also include field details. List routes accept `page` and `limit` (maximum 100). Browser sessions use an HTTP-only, SameSite=Strict cookie, Secure in production. Mutations enforce origin checks when an Origin header is present, and CORS uses `FRONTEND_URL`. Auth and public emergency submission are rate limited.
+JSON API errors use `{ "error": "..." }`; validation responses also include field details. List routes accept `page` and `limit` (maximum 100). Sessions use an HTTP-only cookie and accept the existing bearer-token compatibility path used by the deployed web client. Cookies are Secure and SameSite=None in production, and SameSite=Lax in local development. Mutations enforce origin checks when an Origin header is present, and CORS uses `FRONTEND_URL`. Auth and public emergency submission are rate limited.
 
 ## Deployment preparation
 
-Build the frontend with `npm --prefix client run build` and deploy `client/dist` to Vercel with the project root set to `client/`. Deploy the Node API on Render with the project root set to `server/` (build: `npm install`; start: `npm start`). Set `NODE_ENV=production`, configure PostgreSQL/Redis/Twilio, and set `FRONTEND_URL` and `BACKEND_URL` to deployment origins. Use HTTPS. Apply migrations as a release step before starting the API. For a cross-origin client/API, configure a compatible same-site domain and set `VITE_API_URL`; cookies need HTTPS and browser-accepted SameSite behavior. No production URLs or credentials are embedded in source.
+Build the frontend with `npm --prefix client run build` and deploy `client/dist` to Vercel with the project root set to `client/`. Deploy the Node API on Render with the project root set to `server/` (build: `npm install`; start: `npm start`, which runs `src/server.js`). Set `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, `BACKEND_URL`, and `SMS8_API_KEY`. Redis is optional. Use HTTPS. Apply migrations as a release step before starting the API. For a different API host, set `VITE_API_URL` in the Vercel project environment and redeploy. The frontend calls the API host directly; it does not use a Vercel API proxy. No credentials are embedded in source.
 
 ## Troubleshooting
 
 - Database errors: verify URL, network access, database status, and migration state.
-- Phone verification configuration error: set up Twilio Verify; local development OTP appears in the API terminal.
+- Phone verification configuration error: set `SMS8_API_KEY` on the backend and ensure the SMS8 paired Android device is online; local development OTP appears in the API response when SMS8 is not configured.
 - SMS provider configuration error: configure credentials and sender. Alert remains in history and delivery records.
 - CORS/sign-in issue: `FRONTEND_URL` must exactly match the browser origin, including scheme and port.
 - Hospital search unavailable: Overpass may be throttled or unreachable; retry later or switch provider.
-- QR points at the wrong website: set `FRONTEND_URL` before QR generation; regenerate the QR token after changing origins.
+- Production QR cards use the canonical Vercel frontend URL in the current app configuration. Re-download the card if an older QR contains a different host; the token does not need to be regenerated.
 
 

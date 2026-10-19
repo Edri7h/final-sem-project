@@ -1,4 +1,4 @@
-import { apiClient } from "./api.js";
+import { getVehicleQr } from "./services/vehicle.service.js";
 
 const escapeXml = (value = '') => String(value).replace(/[&<>"']/g, char => ({
   '&': '&amp;',
@@ -9,15 +9,7 @@ const escapeXml = (value = '') => String(value).replace(/[&<>"']/g, char => ({
 }[char]));
 
 async function fetchQrData(vehicleId) {
-  let blob;
-  try {
-    const response = await apiClient.get(`/api/vehicles/${vehicleId}/qr.png`, {
-      responseType: 'blob',
-    });
-    blob = response.data;
-  } catch {
-    throw new Error('Could not load the vehicle QR code.');
-  }
+  const blob = await getVehicleQr(vehicleId);
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);

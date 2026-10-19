@@ -1,6 +1,6 @@
 # HTTP API Reference
 
-All bodies and responses use JSON except QR PNG downloads. Authentication accepts the session HTTP-only cookie or a `Bearer` JWT. Register and login return `sessionToken` for clients that cannot use cross-site cookies. Authenticated routes require a valid session; vehicle and contact routes require a phone-verified account. Admin routes require ADMIN. Common errors: 400 validation, 401 unauthenticated, 403 role or verification denied, 404 unavailable/not owned, 409 duplicate/capacity conflict, 429 rate limited, 500 unexpected error. Validation responses include details with field and message.
+All bodies and responses use JSON except QR PNG downloads. Authentication accepts the session HTTP-only cookie or a `Bearer` JWT. Register and login return `sessionToken` for clients that cannot use cross-site cookies; browser clients must keep it in memory and rely on the HTTP-only cookie for restoration after a page reload. Authenticated routes require a valid session; vehicle and contact routes require a phone-verified account. Admin routes require ADMIN. Common errors: 400 validation, 401 unauthenticated, 403 role or verification denied, 404 unavailable/not owned, 409 duplicate/capacity conflict, 429 rate limited, 500 unexpected error. Validation responses include details with field and message.
 
 | Method | Path | Access | Request | Success and errors |
 | --- | --- | --- | --- | --- |
@@ -46,4 +46,4 @@ All bodies and responses use JSON except QR PNG downloads. Authentication accept
 
     { "type": "ACCIDENT", "description": "Vehicle blocking east lane", "confirmed": true, "latitude": 37.7749, "longitude": -122.4194, "locationAccuracy": 8.2 }
 
-Latitude and longitude are optional but must be provided together. Confirmation must be literal true; scanning never creates an alert. The alert, event, and pending notification rows are written before Twilio is called. notificationStatus is SENT, FAILED, or NO_VERIFIED_CONTACTS, and failure is stated explicitly in the response.
+Latitude and longitude are optional but must be provided together. Confirmation must be literal true; scanning never creates an alert. The alert, event, and pending notification rows are written before SMS8 is called. notificationStatus is SENT, PENDING, FAILED, or NO_VERIFIED_CONTACTS, and failure or unconfirmed delivery is stated explicitly in the response.
