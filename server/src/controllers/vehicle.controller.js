@@ -120,7 +120,11 @@ export async function patchContact(req, res) {
 export async function postResendContactCode(req, res) {
   const result = await resendContactVerification(req.user.id, req.params.id);
   if (!result) return res.status(404).json({ error: "Contact not found" });
-  return res.json({ sent: true, ...developmentOtpPayload(result.delivery) });
+  return res.json({
+    accepted: true,
+    deliveryStatus: result.delivery.status,
+    ...developmentOtpPayload(result.delivery),
+  });
 }
 
 export async function postVerifyContact(req, res) {

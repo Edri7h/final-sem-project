@@ -8,6 +8,7 @@ import {
   timestamp,
   jsonb,
   numeric,
+  integer,
   index,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
@@ -112,6 +113,27 @@ export const auditLogs = pgTable("audit_logs", {
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+export const phoneVerifications = pgTable(
+  "phone_verifications",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    subjectType: varchar("subject_type", { length: 20 }).notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    phone: varchar("phone", { length: 20 }).notNull(),
+    codeHash: text("code_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("phone_verifications_subject_unique").on(
+      table.subjectType,
+      table.subjectId,
+    ),
+    index("phone_verifications_phone_idx").on(table.phone),
+  ],
+);
 
 export const alertEvents = pgTable(
   "alert_events",

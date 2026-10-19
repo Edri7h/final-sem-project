@@ -11,7 +11,7 @@ import { appendAuditLog } from "../repositories/audit.repository.js";
 import {
   checkPhoneVerification,
   startPhoneVerification,
-} from "./sms8.js";
+} from "./phone-verification.service.js";
 
 export async function registerAccount(details) {
   const account = await insertAccount({
@@ -20,7 +20,7 @@ export async function registerAccount(details) {
     phone: details.phone,
     passwordHash: await hash(details.password),
   });
-  const delivery = await startPhoneVerification(details.phone);
+  const delivery = await startPhoneVerification(details.phone, "USER", account.id);
   return { account, delivery };
 }
 
@@ -37,7 +37,9 @@ export async function authenticateAccount(email, password) {
 }
 
 export async function verifyAccountPhone(account, code) {
-  if (!(await checkPhoneVerification(account.phone, code))) return false;
+  if (!(await checkPhoneVerification(account.phone, code, "USER", account.id))) {
+    return false;
+  }
 
   await markAccountPhoneVerified(account.id);
   await appendAuditLog(
@@ -49,15 +51,15 @@ export async function verifyAccountPhone(account, code) {
   return true;
 }
 
-export const resendAccountVerification = (phone) =>
-  startPhoneVerification(phone);
+export const resendAccountVerification = (account) =>
+  startPhoneVerification(account.phone, "USER", account.id);
 
 export async function updateAccount(account, values) {
   const changes = { ...values };
   let delivery;
   if (changes.phone && changes.phone !== account.phone) {
     changes.phoneVerified = false;
-    delivery = await startPhoneVerification(changes.phone);
+    delivery = await startPhoneVerification(changes.phone, "USER", account.id);
   }
 
   const updatedAccount = await updateAccountProfile(account.id, changes);

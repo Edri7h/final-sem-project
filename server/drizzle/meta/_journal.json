@@ -15,6 +15,13 @@
       "when": 1790148038035,
       "tag": "0001_curved_siren",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792394467724,
+      "tag": "0002_ambiguous_kitty_pryde",
+      "breakpoints": true
     }
   ]
 }

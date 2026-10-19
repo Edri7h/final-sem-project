@@ -1,16 +1,32 @@
 import "./config.js";
+import { fileURLToPath } from "node:url";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
 import app from "./app.js";
-import { pool, redis } from "./db.js";
+import { db, pool, redis } from "./db.js";
 
 const port = Number(process.env.PORT || 4000);
-const server = app.listen(port, () => {
-  console.info(
+const migrationsFolder = fileURLToPath(new URL("../drizzle", import.meta.url));
+try {
+  await migrate(db, { migrationsFolder });
+} catch (error) {
+  console.error(
     JSON.stringify({
-      event: "api_started",
-      port,
-      environment: process.env.NODE_ENV || "development",
+      event: "database_migration_failed",
+      code: error.code,
+      message: error.message,
     }),
   );
+  await pool.end();
+  process.exit(1);
+}
+console.info(JSON.stringify({ event: "database_migrations_applied" }));
+
+const server = app.listen(port, () => {
+  console.info(JSON.stringify({
+    event: "api_started",
+    port,
+    environment: process.env.NODE_ENV || "development",
+  }));
 });
 
 server.on("error", (error) => {

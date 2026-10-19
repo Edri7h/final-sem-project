@@ -34,10 +34,11 @@ async function readResponse(response) {
   return body || {};
 }
 
+// Kept for legacy integrations; account and contact flows use the app-managed
+// verification service so OTPs travel through the regular SMS endpoint.
 async function sendOtpRequest(url, phone, code) {
   const form = new URLSearchParams({ phone });
   if (code) form.set("code", code);
-
   const response = await requestSms8(url, {
     method: "POST",
     headers: {
@@ -83,7 +84,6 @@ export async function startPhoneVerification(phone) {
   if (process.env.NODE_ENV === "production") {
     throw new Sms8Error("SMS8 is not configured", 503);
   }
-
   const code = String(Math.floor(100000 + Math.random() * 900000));
   globalThis.devOtps ??= new Map();
   globalThis.devOtps.set(phone, { code, expires: Date.now() + 300_000 });
@@ -98,7 +98,6 @@ export async function checkPhoneVerification(phone, code) {
   if (process.env.NODE_ENV === "production") {
     throw new Sms8Error("SMS8 is not configured", 503);
   }
-
   const saved = globalThis.devOtps?.get(phone);
   const verified = !!saved && saved.code === code && saved.expires > Date.now();
   if (verified) globalThis.devOtps.delete(phone);

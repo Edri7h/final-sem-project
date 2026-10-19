@@ -239,7 +239,8 @@ export function Dashboard() {
               <span className="eyebrow">ONE MORE STEP</span>
               <h1>Verify your phone</h1>
               <p>
-                We sent a one-time code to <b>{user?.phone}</b>. Verify to
+                SMS8 accepted a one-time code request for <b>{user?.phone}</b>.
+                Delivery is not confirmed. Verify to
                 activate vehicle and contact management.
               </p>
               {user?.developmentCode && (
@@ -269,7 +270,7 @@ export function Dashboard() {
                       setMessage(
                         d.developmentCode
                           ? `Local development OTP: ${d.developmentCode}`
-                          : "A new code was sent.",
+                          : "SMS8 accepted the new code request; delivery is not confirmed.",
                       ),
                     )
                     .catch((e) => setError(e.message))

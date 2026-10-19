@@ -14,7 +14,10 @@ import {
 } from "../repositories/vehicle.repository.js";
 import { frontendUrl } from "../config.js";
 import { qrDataUrl, newQrToken } from "./qr.js";
-import { checkPhoneVerification, startPhoneVerification } from "./sms8.js";
+import {
+  checkPhoneVerification,
+  startPhoneVerification,
+} from "./phone-verification.service.js";
 
 export const listVehicles = (ownerId, page, limit) =>
   listOwnerVehicles(ownerId, page, limit);
@@ -72,7 +75,11 @@ export async function createContact(ownerId, vehicleId, values) {
 
   const result = await insertContactWithinVehicleLimit(vehicleId, values);
   if (result.limitReached) return { limitReached: true };
-  const delivery = await startPhoneVerification(result.contact.phone);
+  const delivery = await startPhoneVerification(
+    result.contact.phone,
+    "CONTACT",
+    result.contact.id,
+  );
   return { contact: result.contact, delivery };
 }
 
@@ -84,7 +91,11 @@ export async function updateOwnedContact(ownerId, id, values) {
   let delivery;
   if (changes.phone && changes.phone !== row.contact.phone) {
     changes.verified = false;
-    delivery = await startPhoneVerification(changes.phone);
+    delivery = await startPhoneVerification(
+      changes.phone,
+      "CONTACT",
+      row.contact.id,
+    );
   }
   return {
     contact: await updateContact(row.contact.id, changes),
@@ -95,14 +106,25 @@ export async function updateOwnedContact(ownerId, id, values) {
 export async function resendContactVerification(ownerId, id) {
   const row = await findOwnedContact(id, ownerId);
   if (!row) return null;
-  const delivery = await startPhoneVerification(row.contact.phone);
+  const delivery = await startPhoneVerification(
+    row.contact.phone,
+    "CONTACT",
+    row.contact.id,
+  );
   return { delivery };
 }
 
 export async function verifyOwnedContact(ownerId, id, code) {
   const row = await findOwnedContact(id, ownerId);
   if (!row) return { notFound: true };
-  if (!(await checkPhoneVerification(row.contact.phone, code))) {
+  if (
+    !(await checkPhoneVerification(
+      row.contact.phone,
+      code,
+      "CONTACT",
+      row.contact.id,
+    ))
+  ) {
     return { verified: false };
   }
   await updateContact(row.contact.id, { verified: true });

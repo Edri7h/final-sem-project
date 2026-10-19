@@ -92,8 +92,12 @@ export async function verifyPhone(req, res) {
 }
 
 export async function resendPhoneCode(req, res) {
-  const delivery = await resendAccountVerification(req.user.phone);
-  return res.json({ sent: true, ...developmentOtpPayload(delivery) });
+  const delivery = await resendAccountVerification(req.user);
+  return res.json({
+    accepted: true,
+    deliveryStatus: delivery.status,
+    ...developmentOtpPayload(delivery),
+  });
 }
 
 export function readProfile(req, res) {
