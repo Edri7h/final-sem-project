@@ -137,9 +137,10 @@ export function VehicleList({
 }
 
 export function ContactList({ items, onChange }) {
-  const [ids, setIds] = useState({}),
-    [codes, setCodes] = useState({}),
-    [error, setError] = useState("");
+  const [codes, setCodes] = useState({}),
+    [resending, setResending] = useState({}),
+    [error, setError] = useState(""),
+    [message, setMessage] = useState("");
   async function verifyContact(id) {
     try {
       await verifyContactRequest(id, codes[id] || "");
@@ -150,22 +151,27 @@ export function ContactList({ items, onChange }) {
     }
   }
   async function resend(id) {
+    setError("");
+    setMessage("");
+    setResending((current) => ({ ...current, [id]: true }));
     try {
       const d = await resendContactVerification(id);
-      setIds({ ...ids, [id]: true });
       if (d.developmentCode) setCodes({ ...codes, [id]: d.developmentCode });
-      setError(
+      setMessage(
         d.developmentCode
-          ? "Local development code is now in the verification field."
+          ? "Local development code is shown in the verification field."
           : "A new verification code was sent.",
       );
     } catch (e) {
       setError(e.message);
+    } finally {
+      setResending((current) => ({ ...current, [id]: false }));
     }
   }
   return (
     <div className="panel">
       {error && <div className="error">{error}</div>}
+      {message && <div className="success">{message}</div>}
       {items.length ? (
         items.map((c) => (
           <div className="contactrow" key={c.id}>
@@ -180,25 +186,26 @@ export function ContactList({ items, onChange }) {
               </small>
               {!c.verified && (
                 <div className="contactverify">
-                  {ids[c.id] && (
-                    <>
-                      <input
-                        aria-label="Contact verification code"
-                        inputMode="numeric"
-                        maxLength="6"
-                        placeholder="6 digit code"
-                        value={codes[c.id] || ""}
-                        onChange={(e) =>
-                          setCodes({ ...codes, [c.id]: e.target.value })
-                        }
-                      />
-                      <button onClick={() => verifyContact(c.id)}>
-                        Verify
-                      </button>
-                    </>
-                  )}
-                  <button onClick={() => resend(c.id)}>
-                    {ids[c.id] ? "Resend code" : "Send verification code"}
+                  <small>
+                    Enter the code sent when you added this contact. Resend only
+                    if you did not receive it or it expired.
+                  </small>
+                  <input
+                    aria-label="Contact verification code"
+                    inputMode="numeric"
+                    maxLength="6"
+                    placeholder="6 digit code"
+                    value={codes[c.id] || ""}
+                    onChange={(e) =>
+                      setCodes({ ...codes, [c.id]: e.target.value })
+                    }
+                  />
+                  <button onClick={() => verifyContact(c.id)}>Verify</button>
+                  <button
+                    onClick={() => resend(c.id)}
+                    disabled={!!resending[c.id]}
+                  >
+                    {resending[c.id] ? "Sending…" : "Resend code"}
                   </button>
                 </div>
               )}
