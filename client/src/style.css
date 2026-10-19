@@ -30,3 +30,73 @@
 .qr-modal-actions .button{min-height:42px}
 .qr-modal-actions .button:disabled{opacity:.6;cursor:wait}
 @media(max-width:520px){.qr-modal-actions{flex-direction:column-reverse}.qr-modal-actions .button{width:100%}}
+
+.contactverify {
+  display: grid;
+  grid-template-columns: minmax(150px, 220px) auto auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.contactverify small {
+  grid-column: 1 / -1;
+  line-height: 1.45;
+}
+
+.contactverify input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid #dce5e2;
+  border-radius: 6px;
+  color: var(--ink);
+  font-size: 12px;
+}
+
+.contactverify button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid #dce7e2;
+  border-radius: 6px;
+  background: #f4f8f6;
+  color: var(--green);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.contactverify button:first-of-type {
+  border-color: var(--navy);
+  background: var(--navy);
+  color: white;
+}
+
+.contactverify button:disabled {
+  cursor: wait;
+  opacity: 0.6;
+}
+
+.success {
+  padding: 11px 12px;
+  border-radius: 7px;
+  font-size: 12px;
+  margin: 12px 0;
+}
+
+@media (max-width: 700px) {
+  .contactrow {
+    flex-wrap: wrap;
+  }
+
+  .contactrow > div {
+    flex-basis: calc(100% - 50px);
+  }
+
+  .contactverify {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .contactverify input {
+    grid-column: 1 / -1;
+  }
+}

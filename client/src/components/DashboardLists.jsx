@@ -136,12 +136,14 @@ export function VehicleList({
   );
 }
 
-export function ContactList({ items, onChange }) {
+export function ContactList({ items, onChange, onAction }) {
   const [codes, setCodes] = useState({}),
     [resending, setResending] = useState({}),
     [error, setError] = useState(""),
     [message, setMessage] = useState("");
   async function verifyContact(id) {
+    onAction?.();
+    setMessage("");
     try {
       await verifyContactRequest(id, codes[id] || "");
       setError("");
@@ -151,6 +153,7 @@ export function ContactList({ items, onChange }) {
     }
   }
   async function resend(id) {
+    onAction?.();
     setError("");
     setMessage("");
     setResending((current) => ({ ...current, [id]: true }));
@@ -160,7 +163,7 @@ export function ContactList({ items, onChange }) {
       setMessage(
         d.developmentCode
           ? "Local development code is shown in the verification field."
-          : "A new verification code was sent.",
+          : "SMS8 accepted the resend request. Delivery is not confirmed; check the SMS8 device and logs if it does not arrive.",
       );
     } catch (e) {
       setError(e.message);
@@ -214,6 +217,7 @@ export function ContactList({ items, onChange }) {
               className="contactremove"
               onClick={async () => {
                 if (window.confirm("Remove this contact?")) {
+                  onAction?.();
                   try {
                     await removeContact(c.id);
                     onChange();

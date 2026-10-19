@@ -68,6 +68,9 @@ export function Dashboard() {
   useEffect(() => {
     if (user?.phoneVerified) load();
   }, [user]);
+  useEffect(() => {
+    setMessage("");
+  }, [tab]);
   async function verifyPhone(e) {
     e.preventDefault();
     try {
@@ -108,7 +111,7 @@ export function Dashboard() {
       setMessage(
         d.developmentCode
           ? `Contact added. Local development OTP: ${d.developmentCode}`
-          : `Contact added. A verification code was sent to ${d.contact.phone}.`,
+          : `Contact added. SMS8 accepted a verification request for ${d.contact.phone}; delivery is not confirmed.`,
       );
       setShowContact(null);
       setCf({ name: "", phone: "", relationship: "" });
@@ -330,7 +333,11 @@ export function Dashboard() {
                   }}
                 />
               ) : tab === "Emergency contacts" ? (
-                <ContactList items={contacts} onChange={load} />
+                <ContactList
+                  items={contacts}
+                  onChange={load}
+                  onAction={() => setMessage("")}
+                />
               ) : tab === "Alert history" ? (
                 <AlertList items={alerts} act={act} />
               ) : tab === "Account settings" ? (
