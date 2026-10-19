@@ -21,7 +21,10 @@ import { Logo } from '../components/Brand.jsx';
 import { downloadQrCard, printQrCard } from '../qr-card.js';
 import { logout as logoutRequest, resendAccountCode, verifyAccountPhone } from '../services/auth.service.js';
 import { getVehicles, createVehicle, updateVehicle, regenerateVehicleQr } from '../services/vehicle.service.js';
-import { getContacts, addContact } from '../services/contact.service.js';
+import {
+  getContacts,
+  addContact as createEmergencyContact,
+} from '../services/contact.service.js';
 import { getAlerts, updateAlertStatus } from '../services/alert.service.js';
 import { clearSessionToken } from '../api.js';
 
@@ -95,10 +98,10 @@ export function Dashboard() {
       setError(e.message);
     }
   }
-  async function addContact(e) {
+  async function handleAddContact(e) {
     e.preventDefault();
     try {
-      const d = await addContact(showContact, {
+      const d = await createEmergencyContact(showContact, {
         ...cf,
         phone: "+91" + cf.phone,
       });
@@ -540,7 +543,7 @@ export function Dashboard() {
           <p className="muted">
             They’ll need to verify their mobile number before receiving alerts.
           </p>
-          <form onSubmit={addContact}>
+          <form onSubmit={handleAddContact}>
             <label>
               Contact name
               <input
