@@ -15,7 +15,7 @@ export async function startPhoneVerification(phone, subjectType, subjectId) {
   if (process.env.SMS8_API_KEY?.trim()) {
     delivery = await sendAlertSms(
       phone,
-      `Beacon verification code: ${code}. It expires in 10 minutes. Do not share it.`,
+       "Beacon test message. Please ignore this message.",
     );
   } else if (process.env.NODE_ENV === "production") {
     throw new Sms8Error("SMS8 is not configured", 503);
