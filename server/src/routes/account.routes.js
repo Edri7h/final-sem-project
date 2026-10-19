@@ -23,7 +23,7 @@ const authLimit = rateLimit({
   legacyHeaders: false,
 });
 const otpLimit = rateLimit({
-  windowMs: 15 * 60 * 1000,
+  windowMs: 1* 60 * 1000,
   limit: 12,
   keyGenerator: (req) => req.user.id,
   standardHeaders: true,
