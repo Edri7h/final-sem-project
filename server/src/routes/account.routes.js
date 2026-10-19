@@ -23,7 +23,7 @@ const authLimit = rateLimit({
   legacyHeaders: false,
 });
 const otpLimit = rateLimit({
-  windowMs: 1* 60 * 1000,
+  windowMs: 60 * 1000,
   limit: 12,
   keyGenerator: (req) => req.user.id,
   standardHeaders: true,
@@ -31,7 +31,7 @@ const otpLimit = rateLimit({
   handler: (req, res) =>
     res.status(429).json({
       error:
-        "Too many verification requests for this account. Wait 15 minutes before trying again.",
+        "Too many verification requests for this account. Wait one minute before trying again.",
     }),
 });
 
