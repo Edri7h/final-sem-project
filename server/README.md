@@ -87,7 +87,9 @@ JSON API errors use `{ "error": "..." }`; validation responses also include fiel
 
 ## Deployment preparation
 
-Build the frontend with `npm --prefix client run build` and deploy `client/dist` to Vercel with the project root set to `client/`. Deploy the Node API on Render with the project root set to `server/` (build: `npm install`; start: `npm start`, which runs `src/server.js`). Set `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL`, `BACKEND_URL`, and `SMS8_API_KEY`. Redis is optional. Use HTTPS. Apply migrations as a release step before starting the API. For a different API host, set `VITE_API_URL` in the Vercel project environment and redeploy. The frontend calls the API host directly; it does not use a Vercel API proxy. No credentials are embedded in source.
+Build the frontend with `npm --prefix client run build` and deploy `client/dist` to Vercel with the project root set to `client/`. Deploy the Node API on Render with the project root set to `server/` (build: `npm install`; start: `npm start`, which runs `src/server.js`). Set `NODE_ENV=production`, `DATABASE_URL`, `JWT_SECRET`, `FRONTEND_URL=https://beacon-emergency.vercel.app`, `BACKEND_URL`, and `SMS8_API_KEY`. Redis is optional. Use HTTPS. Apply migrations as a release step before starting the API. For a different API host, set `VITE_API_URL` in the Vercel project environment and redeploy. The frontend calls the API host directly; it does not use a Vercel API proxy. No credentials are embedded in source.
+
+The API temporarily accepts the previous Vercel origin for QR cards already printed with that hostname, if it still serves this frontend. Newly generated QR codes use `https://beacon-emergency.vercel.app`. Before retiring the old hostname, replace and reprint any existing QR cards that still point to it.
 
 ## Troubleshooting
 

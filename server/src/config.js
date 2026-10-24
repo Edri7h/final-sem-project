@@ -10,7 +10,8 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 }
 
 export const productionFrontendUrl =
-  "https://final-sem-project-chi.vercel.app";
+  "https://beacon-emergency.vercel.app";
+const legacyFrontendUrl = "https://final-sem-project-chi.vercel.app";
 const defaultFrontendUrl =
   process.env.NODE_ENV === "production"
     ? productionFrontendUrl
@@ -24,6 +25,7 @@ export const frontendUrls = (process.env.FRONTEND_URL || defaultFrontendUrl)
 export const allowedFrontendOrigins = new Set([
   ...frontendUrls,
   productionFrontendUrl,
+  legacyFrontendUrl,
 ]);
 
 export const frontendUrl =
